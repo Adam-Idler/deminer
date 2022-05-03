@@ -1,13 +1,20 @@
 const canvas = document.getElementById('game-field');
+const modalWrapper = document.querySelector('.modal__wrapper');
+const modalWin = document.querySelector('.modal_win');
+const modalLoss = document.querySelector('.modal_loss');
+const modalRetryButton = document.querySelector('.modal__retry-button');
+const link = document.querySelector("link[rel~='icon']");
+
 const ctx = canvas.getContext('2d');
 const cells = [];
 const bombs = [];
 const cellsView = [];
 const bombsView = [];
+const map = [];
 let activeBombImage;
 
 const cellSize = 40;
-const fieldSize = 6;
+const fieldSize = 10;
 
 canvas.width = fieldSize * cellSize * 2 + 40;
 canvas.height = fieldSize * cellSize + 20;
@@ -29,35 +36,12 @@ const cellStyle = {
   default: () => { ctx.fillStyle = 'black' }
 }
 
-// const map = [
-//   [0, 0, 0, 0, 0, 0, 0, 0],
-//   [1, 0, 0, 0, 0, 0, 0, 0],
-//   [0, 0, 0, 1, 0, 1, 0, 0],
-//   [0, 0, 0, 0, 0, 0, 0, 0],
-//   [1, 0, 0, 0, 0, 0, 0, 1],
-//   [0, 0, 0, 0, 0, 0, 0, 0],
-//   [0, 1, 0, 1, 0, 0, 0, 1],
-//   [0, 0, 0, 0, 0, 0, 0, 0]
-// ];
-
 function getRandomInRange(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-const map = [];
-for (let i = 0; i < fieldSize; i++) {
-  map[i] = [];
-  for (let j = 0; j < fieldSize; j++) {
-    map[i][j] = 0;
-  }
-}
-
-for (let i = 0; i < 5; i++) {
-  map[getRandomInRange(0, fieldSize - 1)][getRandomInRange(0, fieldSize - 1)] = 1;
-}
-
 class Cell {
-  constructor({ x, y, width, height, i, j, blockImg, bombImg,  opened = false }) {
+  constructor({ x, y, width, height, i, j, blockImg, bombImg, opened = false }) {
     this.x = x;
     this.y = y;
     this.width = width;
@@ -107,10 +91,10 @@ function applyFunctionToCellsAround(cells, fn, cell) {
   for (let i = -1; i <= 1; i++) {
     for (let j = -1; j <= 1; j++) {
       if (
-          i === 0 && j === 0 ||
-          cell.mapI + i > fieldSize - 1 || cell.mapI + i < 0 ||
-          cell.mapJ + j > fieldSize - 1 || cell.mapJ + j < 0
-        ) continue;
+        i === 0 && j === 0 ||
+        cell.mapI + i > fieldSize - 1 || cell.mapI + i < 0 ||
+        cell.mapJ + j > fieldSize - 1 || cell.mapJ + j < 0
+      ) continue;
       result.push(fn(cells[fieldSize * (cell.mapI + i) + cell.mapJ + j]));
     }
   }
@@ -123,25 +107,26 @@ function increaseBombsAround(cell) {
 }
 
 function openEmptyBlock(cell) {
-  if (!cell || cell.opened || cell.bombsAround > 0) return;
+  if (!cell || cell.opened || cell.isBomb || cell.bombsAround > 0) return;
 
-  if (cell.isBomb) {
-    cell.bombImg = activeBombImage;
-    bombs.forEach(bomb => {
-      canvas.removeEventListener('click', canvasClickHandler);
-      bomb.opened = true;
-      bomb.draw();
-    });
-  } else {
-    cell.opened = true;
-    applyFunctionToCellsAround(cells, openEmptyBlock, cell);
-    applyFunctionToCellsAround(cells, forceOpenBlock, cell);
-  }
+  cell.opened = true;
+  applyFunctionToCellsAround(cells, openEmptyBlock, cell);
+  applyFunctionToCellsAround(cells, forceOpenBlock, cell);
 }
 
 function forceOpenBlock(cell) {
   if (!cell) return;
   cell.opened = true;
+
+  if (cell.isBomb) {
+    openModal(modalLoss);
+    link.href = './assets/img/active-bomb.png';
+    cell.bombImg = activeBombImage;
+    bombs.forEach(bomb => {
+      bomb.opened = true;
+      bomb.draw();
+    });
+  }
 }
 
 function draw() {
@@ -149,17 +134,16 @@ function draw() {
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   // ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  cells.forEach(cell => 
+  cells.forEach(cell =>
     cell.draw()
   );
-  cellsView.forEach(cell => 
+  cellsView.forEach(cell =>
     cell.draw()
   );
 
   const remainingBlocks = cells.filter(cell => !cell.opened);
-  console.log(remainingBlocks);
   if (remainingBlocks.length - bombs.length === 0) {
-    console.log('Победа!!');
+    openModal(modalWin);
   }
 }
 
@@ -178,63 +162,95 @@ function loadImage(url) {
   });
 }
 
-Promise.all([
-  loadFont(new FontFace('Teletactile', 'url(./assets/fonts/Teletactile.ttf)')),
-  loadImage('./assets/img/character_0008.png'),
-  loadImage('./assets/img/tile_0047.png'),
-  loadImage('./assets/img/active-bomb.png'),
-])
-.then(([font, bombImg, blockImg, activeBombImg]) => {
-  document.fonts.add(font);
-  activeBombImage = activeBombImg;
-
+function start() {
   for (let i = 0; i < fieldSize; i++) {
+    map[i] = [];
     for (let j = 0; j < fieldSize; j++) {
-      cells.push(new Cell({
-        x: j * cellSize + 10,
-        y: i * cellSize + 10,
-        width: cellSize,
-        height: cellSize,
-        i,
-        j,
-        blockImg,
-        bombImg
-      }));
+      map[i][j] = 0;
     }
   }
 
-  for (let i = 0; i < fieldSize; i++) {
-    for (let j = 0; j < fieldSize; j++) {
-      cellsView.push(new Cell({
-        x: j * cellSize + canvas.width / 2 + 10,
-        y: i * cellSize + 10,
-        width: cellSize,
-        height: cellSize,
-        i,
-        j,
-        blockImg,
-        bombImg,
-        opened: true
-      }));
+  for (let i = 0; i < 14; i++) {
+    let randomI = getRandomInRange(0, fieldSize - 1);
+    let randomJ = getRandomInRange(0, fieldSize - 1);
+    if (map[randomI][randomJ] === 1) {
+      i--;
+      continue;
     }
+    map[randomI][randomJ] = 1;
   }
 
-  cells.forEach(cell => {
-    if (cell.isBomb) {
-      bombs.push(cell);
-      applyFunctionToCellsAround(cells, increaseBombsAround, cell);
-    }
-  });
+  Promise.all([
+    loadFont(new FontFace('Teletactile', 'url(./assets/fonts/Teletactile.ttf)')),
+    loadImage('./assets/img/character_0008.png'),
+    loadImage('./assets/img/tile_0047.png'),
+    loadImage('./assets/img/active-bomb.png'),
+  ])
+    .then(([font, bombImg, blockImg, activeBombImg]) => {
+      document.fonts.add(font);
+      activeBombImage = activeBombImg;
 
-  cellsView.forEach(cell => {
-    if (cell.isBomb) {
-      bombsView.push(cell);
-      applyFunctionToCellsAround(cellsView, increaseBombsAround, cell);
-    }
-  });
+      for (let i = 0; i < fieldSize; i++) {
+        for (let j = 0; j < fieldSize; j++) {
+          cells.push(new Cell({
+            x: j * cellSize + 10,
+            y: i * cellSize + 10,
+            width: cellSize,
+            height: cellSize,
+            i,
+            j,
+            blockImg,
+            bombImg
+          }));
+        }
+      }
 
-  draw();
-});
+      for (let i = 0; i < fieldSize; i++) {
+        for (let j = 0; j < fieldSize; j++) {
+          cellsView.push(new Cell({
+            x: j * cellSize + canvas.width / 2 + 10,
+            y: i * cellSize + 10,
+            width: cellSize,
+            height: cellSize,
+            i,
+            j,
+            blockImg,
+            bombImg,
+            opened: true
+          }));
+        }
+      }
+
+      cells.forEach(cell => {
+        if (cell.isBomb) {
+          bombs.push(cell);
+          applyFunctionToCellsAround(cells, increaseBombsAround, cell);
+        }
+      });
+
+      cellsView.forEach(cell => {
+        if (cell.isBomb) {
+          bombsView.push(cell);
+          applyFunctionToCellsAround(cellsView, increaseBombsAround, cell);
+        }
+      });
+
+      draw();
+    });
+  
+  canvas.addEventListener('click', canvasClickHandler);
+}
+
+function openModal(modal) {
+  canvas.removeEventListener('click', canvasClickHandler);
+  modalWrapper.classList.add('visible');
+  modal.classList.add('visible');
+}
+
+function closeModal(modal) {
+  modalWrapper.classList.remove('visible');
+  modalWrapper.querySelector('.visible').classList.remove('visible');
+}
 
 function canvasClickHandler(e) {
   let x = e.pageX - canvasLeft;
@@ -243,15 +259,22 @@ function canvasClickHandler(e) {
   cells.forEach(cell => {
     if (y > cell.y && y < cell.y + cell.height
       && x > cell.x && x < cell.x + cell.width) {
-      // console.log('clicked an element', cell.mapI, cell.mapJ);
-
       openEmptyBlock(cell);
       forceOpenBlock(cell);
-      // applyFunctionToCellsAround(cells, openEmptyBlock, cell);
 
       draw();
     }
   });
 }
+start();
 
-canvas.addEventListener('click', canvasClickHandler);
+modalRetryButton.addEventListener('click', () => {
+  map.length = 0;
+  cells.length = 0;
+  cellsView.length = 0;
+  bombs.length = 0;
+  closeModal();
+  link.href = './assets/img/character_0008.png';
+
+  start()
+});
