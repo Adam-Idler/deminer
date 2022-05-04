@@ -1,93 +1,133 @@
 * {
-    margin: 0;
-    padding: 0;
+  margin: 0;
+  padding: 0;
 }
 
 @font-face {
-    font-family: 'Pixel';
-    src: url('./assets/fonts/Teletactile.ttf');
+  font-family: 'Pixel';
+  src: url('./assets/fonts/Teletactile.ttf');
 }
 
 body {
-    font-family: 'Pixel';
-    height: 100vh;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    background-image: url(./assets/img/background.png);
+  font-family: 'Pixel';
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-image: url(./assets/img/background.png);
+}
+
+body.flaged {
+  cursor: url('./assets/img/tile_0111.png'), auto;
 }
 
 .modal__wrapper {
-    display: flex;
-    visibility: hidden;
-    pointer-events: none;
-    opacity: 0;
-    background-color: rgba(0, 0, 0, .5);
-    width: 100vw;
-    height: 100vh;
-    position: fixed;
-    top: 0;
-    left: 0;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    transition: visibility .3s, opacity .3s;
+  display: flex;
+  visibility: hidden;
+  pointer-events: none;
+  opacity: 0;
+  background-color: rgba(0, 0, 0, .5);
+  width: 100vw;
+  height: 100vh;
+  position: fixed;
+  top: 0;
+  left: 0;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  transition: visibility .3s, opacity .3s;
 }
 
 .modal {
-    visibility: hidden;
-    opacity: 0;
-    font-size: 36px;
-    text-shadow: 4px 4px 4px #000;
-    user-select: none;
-    flex-direction: column;
-    transition: visibility .3s, opacity .3s;
+  visibility: hidden;
+  opacity: 0;
+  font-size: 36px;
+  text-shadow: 4px 4px 4px #000;
+  user-select: none;
+  flex-direction: column;
+  transition: visibility .3s, opacity .3s;
 }
 
 .modal h1 {
-    margin-bottom: 20px;
+  margin-bottom: 20px;
 }
 
 .modal__retry-button {
-    margin: 0 auto;
-    background-color: transparent;
-    border: none;
-    outline: none;
-    font-family: inherit;
-    max-width: 140px;
-    padding: 10px;
-    border-radius: 8px;
-    background-color: rgb(129 87 67);
-    background-image: url('./assets/img/blend.jpg');
-    background-blend-mode: multiply;
-    background-size: cover;
-    color: #fff;
-    font-size: 20px;
-    cursor: pointer;
-    text-shadow: 2px 2px 4px #000;
-    box-shadow: 2px 2px 4px #000;
-    transition: background-color .3s;
+  margin: 0 auto;
+  background-color: transparent;
+  border: none;
+  outline: none;
+  font-family: inherit;
+  max-width: 140px;
+  padding: 10px;
+  border-radius: 8px;
+  background-color: rgb(129 87 67);
+  background-image: url('./assets/img/blend.jpg');
+  background-blend-mode: multiply;
+  background-size: cover;
+  color: #fff;
+  font-size: 20px;
+  cursor: pointer;
+  text-shadow: 2px 2px 4px #000;
+  box-shadow: 2px 2px 4px #000;
+  transition: background-color .3s;
 }
 
 .modal__retry-button:hover {
-    background-color: rgba(129, 87, 67, .8);
+  background-color: rgba(129, 87, 67, .8);
 }
 
 .modal_win {
-    color: green;
+  color: green;
 }
 
 .modal_loss {
-    color: red;
+  color: red;
 }
 
 .modal:not(.visible) {
-    display: none;
+  display: none;
 }
 
 .visible {
-    display: flex;
-    visibility: unset;
-    opacity: 1;
-    pointer-events: all;
+  display: flex;
+  visibility: unset;
+  opacity: 1;
+  pointer-events: all;
+}
+
+.canvas__header {
+  padding: 10px 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: greenyellow;  
+  background-position: center;
+  background-image: url('./assets/img/blend2.jpg');
+  background-blend-mode: multiply;
+}
+
+.flag {
+  background-color: transparent;
+  border: none;
+  color: none;
+  border: 2px solid #fff;
+  background-color: green;
+  border-radius: 8px;
+  padding: 10px;
+  transition: transform .2s;
+  cursor: pointer;
+}
+
+.flag img {
+  user-select: none;
+  pointer-events: none;
+}
+
+.flag:hover {
+  transform: scale(1.03);
+}
+
+.flag:active {
+  transform: scale(0.99);
 }

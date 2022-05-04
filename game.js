@@ -3,6 +3,7 @@ const modalWrapper = document.querySelector('.modal__wrapper');
 const modalWin = document.querySelector('.modal_win');
 const modalLoss = document.querySelector('.modal_loss');
 const modalRetryButton = document.querySelector('.modal__retry-button');
+const flagBtn = document.querySelector('.flag');
 const link = document.querySelector("link[rel~='icon']");
 
 const ctx = canvas.getContext('2d');
@@ -15,6 +16,7 @@ let activeBombImage;
 
 const cellSize = 40;
 const fieldSize = 10;
+const bombsCount = 15;
 
 canvas.width = fieldSize * cellSize * 2 + 40;
 canvas.height = fieldSize * cellSize + 20;
@@ -41,7 +43,7 @@ function getRandomInRange(min, max) {
 }
 
 class Cell {
-  constructor({ x, y, width, height, i, j, blockImg, bombImg, opened = false }) {
+  constructor({ x, y, width, height, i, j, blockImg, bombImg, flagImg, opened = false, flaged = false }) {
     this.x = x;
     this.y = y;
     this.width = width;
@@ -49,9 +51,11 @@ class Cell {
     this.mapI = i;
     this.mapJ = j;
     this.isBomb = !!map[this.mapI][this.mapJ];
+    this.flaged = flaged;
     this.bombsAround = 0;
     this.blockImg = blockImg;
     this.bombImg = bombImg;
+    this.flagImg = flagImg;
     this.opened = opened;
   }
 
@@ -77,11 +81,17 @@ class Cell {
     ctx.drawImage(this.blockImg, this.x, this.y, this.width, this.height);
   }
 
+  drawFlag() {
+    ctx.drawImage(this.flagImg, this.x + 10, this.y + 10, this.width - 20, this.height - 20);
+  }
+
   draw() {
     if (this.opened) {
       this.drawCell();
     } else {
       this.drawBlock();
+
+      if (this.flaged) this.drawFlag();
     }
   }
 }
@@ -107,8 +117,19 @@ function increaseBombsAround(cell) {
 }
 
 function openEmptyBlock(cell) {
-  if (!cell || cell.opened || cell.isBomb || cell.bombsAround > 0) return;
-
+  if (
+    !cell ||
+    cell.opened ||
+    cell.isBomb || 
+    cell.bombsAround > 0 ||
+    document.body.classList.contains('flaged')
+  ) return;
+ 
+  if (cell.flaged) {
+    cell.flaged = false;
+    return;
+  }
+  
   cell.opened = true;
   applyFunctionToCellsAround(cells, openEmptyBlock, cell);
   applyFunctionToCellsAround(cells, forceOpenBlock, cell);
@@ -116,16 +137,28 @@ function openEmptyBlock(cell) {
 
 function forceOpenBlock(cell) {
   if (!cell) return;
-  cell.opened = true;
 
-  if (cell.isBomb) {
-    openModal(modalLoss);
-    link.href = './assets/img/active-bomb.png';
-    cell.bombImg = activeBombImage;
-    bombs.forEach(bomb => {
-      bomb.opened = true;
-      bomb.draw();
-    });
+  if (document.body.classList.contains('flaged')) {
+
+    console.log(cell.flaged);
+    cell.flaged = !cell.flaged;
+    document.body.classList.remove('flaged');
+
+    return;
+  }
+
+  if (!cell.flaged) {
+    cell.opened = true;
+
+    if (cell.isBomb) {
+      openModal(modalLoss);
+      link.href = './assets/img/active-bomb.png';
+      cell.bombImg = activeBombImage;
+      bombs.forEach(bomb => {
+        bomb.opened = true;
+        bomb.draw();
+      });
+    }
   }
 }
 
@@ -143,6 +176,10 @@ function draw() {
 
   const remainingBlocks = cells.filter(cell => !cell.opened);
   if (remainingBlocks.length - bombs.length === 0) {
+    bombs.forEach(bomb => {
+      bomb.opened = true;
+      bomb.draw();
+    });
     openModal(modalWin);
   }
 }
@@ -170,7 +207,7 @@ function start() {
     }
   }
 
-  for (let i = 0; i < 14; i++) {
+  for (let i = 0; i < bombsCount; i++) {
     let randomI = getRandomInRange(0, fieldSize - 1);
     let randomJ = getRandomInRange(0, fieldSize - 1);
     if (map[randomI][randomJ] === 1) {
@@ -185,8 +222,9 @@ function start() {
     loadImage('./assets/img/character_0008.png'),
     loadImage('./assets/img/tile_0047.png'),
     loadImage('./assets/img/active-bomb.png'),
+    loadImage('./assets/img/tile_0111.png')
   ])
-    .then(([font, bombImg, blockImg, activeBombImg]) => {
+    .then(([font, bombImg, blockImg, activeBombImg, flagImg]) => {
       document.fonts.add(font);
       activeBombImage = activeBombImg;
 
@@ -200,7 +238,8 @@ function start() {
             i,
             j,
             blockImg,
-            bombImg
+            bombImg,
+            flagImg
           }));
         }
       }
@@ -216,7 +255,8 @@ function start() {
             j,
             blockImg,
             bombImg,
-            opened: true
+            flagImg,
+            // opened: true
           }));
         }
       }
@@ -237,7 +277,7 @@ function start() {
 
       draw();
     });
-  
+
   canvas.addEventListener('click', canvasClickHandler);
 }
 
@@ -247,7 +287,7 @@ function openModal(modal) {
   modal.classList.add('visible');
 }
 
-function closeModal(modal) {
+function closeModal() {
   modalWrapper.classList.remove('visible');
   modalWrapper.querySelector('.visible').classList.remove('visible');
 }
@@ -267,6 +307,14 @@ function canvasClickHandler(e) {
   });
 }
 start();
+
+function flagHandler() {
+  document.body.classList.toggle('flaged');
+}
+
+flagBtn.addEventListener('click', flagHandler);
+document.addEventListener('contextmenu', (e) => e.preventDefault())
+document.addEventListener('mousedown', (e) => { if (e.button === 2) flagHandler() });
 
 modalRetryButton.addEventListener('click', () => {
   map.length = 0;
