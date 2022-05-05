@@ -7,12 +7,11 @@ const flagBtn = document.querySelector('.flag');
 const link = document.querySelector("link[rel~='icon']");
 const timerMinutes = document.querySelector('#timer-minutes');
 const timerSeconds = document.querySelector('#timer-seconds');
+const recordText = document.querySelector('.record');
 
 const ctx = canvas.getContext('2d');
 const cells = [];
 const bombs = [];
-const cellsView = [];
-const bombsView = [];
 const map = [];
 let activeBombImage;
 let intervalID;
@@ -23,7 +22,6 @@ const cellSize = 40;
 const fieldSize = 10;
 const bombsCount = 15;
 
-// canvas.width = fieldSize * cellSize * 2 + 40;
 canvas.width = fieldSize * cellSize + 20;
 canvas.height = fieldSize * cellSize + 20;
 canvasLeft = canvas.offsetLeft;
@@ -76,8 +74,6 @@ function forceOpenBlock(cell) {
   if (!cell) return;
 
   if (document.body.classList.contains('flaged')) {
-
-    console.log(cell.flaged);
     cell.flaged = !cell.flaged;
     document.body.classList.remove('flaged');
 
@@ -89,6 +85,7 @@ function forceOpenBlock(cell) {
 
     if (cell.isBomb) {
       openModal(modalLoss);
+      cancelTimer();
       link.href = './assets/img/active-bomb.png';
       cell.bombImg = activeBombImage;
       bombs.forEach(bomb => {
@@ -99,24 +96,24 @@ function forceOpenBlock(cell) {
   }
 }
 
+const getNullAdd = (param) => {
+  if (param < 10) {
+    return '0' + param;
+  } else {
+    return param
+  }
+}
+
+const getTime = (time) => {
+  let minutes = getNullAdd(Math.floor((time / 60) % 60));
+  let seconds = getNullAdd(Math.floor(time % 60));
+  return { minutes, seconds }
+}
+
 function timer() {
-  const getNullAdd = (param) => {
-    if (param < 10) {
-      return '0' + param;
-    } else {
-      return param
-    }
-  }
-
-  const getTime = () => {
-    let minutes = getNullAdd(Math.floor((time / 60) % 60));
-    let seconds = getNullAdd(Math.floor(time % 60));
-    time += 1;
-    return { minutes, seconds }
-  }
-
   const updateClock = () => {
-    let timeNow = getTime();
+    time += 1;
+    let timeNow = getTime(time);
     timerMinutes.textContent = timeNow.minutes;
     timerSeconds.textContent = timeNow.seconds;
   }
@@ -130,7 +127,6 @@ function cancelTimer() {
 }
 
 function openModal(modal) {
-  cancelTimer();
   canvas.removeEventListener('click', canvasClickHandler);
   modalWrapper.classList.add('visible');
   modal.classList.add('visible');
@@ -168,17 +164,26 @@ function flagHandler() {
 function draw() {
   ctx.fillStyle = '#6f3e43';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
-  // ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   cells.forEach(cell =>
-    cell.draw()
-  );
-  cellsView.forEach(cell =>
     cell.draw()
   );
 
   const remainingBlocks = cells.filter(cell => !cell.opened);
   if (remainingBlocks.length - bombs.length === 0) {
+    cancelTimer();
+    let lastRecord = +localStorage.getItem('record');
+    console.log(recordText);
+    time
+    if (time < lastRecord || !lastRecord) {
+      localStorage.setItem('record', time);
+      console.log(timerMinutes.textContent, timerSeconds.textContent);
+      recordText.textContent = `New Record: ${timerMinutes.textContent}:${timerSeconds.textContent}`;
+    } else {
+      let lastRecordTime = getTime(lastRecord);
+      recordText.textContent = `Record: ${lastRecordTime.minutes}:${lastRecordTime.seconds}`;
+    }
+
     bombs.forEach(bomb => {
       bomb.opened = true;
       bomb.draw();
@@ -186,7 +191,6 @@ function draw() {
     openModal(modalWin);
   }
 }
-
 
 function loadFont(font) {
   return new Promise((resolve, reject) => {
@@ -247,36 +251,12 @@ function start() {
         }
       }
 
-      // for (let i = 0; i < fieldSize; i++) {
-      //   for (let j = 0; j < fieldSize; j++) {
-      //     cellsView.push(new Cell({
-      //       x: j * cellSize + canvas.width / 2 + 10,
-      //       y: i * cellSize + 10,
-      //       width: cellSize,
-      //       height: cellSize,
-      //       i,
-      //       j,
-      //       blockImg,
-      //       bombImg,
-      //       flagImg,
-      //       opened: true
-      //     }));
-      //   }
-      // }
-
       cells.forEach(cell => {
         if (cell.isBomb) {
           bombs.push(cell);
           applyFunctionToCellsAround(cells, increaseBombsAround, cell);
         }
       });
-
-      // cellsView.forEach(cell => {
-      //   if (cell.isBomb) {
-      //     bombsView.push(cell);
-      //     applyFunctionToCellsAround(cellsView, increaseBombsAround, cell);
-      //   }
-      // });
 
       draw();
     });
@@ -285,7 +265,7 @@ function start() {
 }
 
 const cellStyle = {
-  0: () => { },
+  0: () => { ctx.fillStyle = 'transparent' },
   1: () => { ctx.fillStyle = '#fff' },
   2: () => { ctx.fillStyle = 'green' },
   3: () => { ctx.fillStyle = 'yellow' },
@@ -347,7 +327,6 @@ class Cell {
       this.drawCell();
     } else {
       this.drawBlock();
-
       if (this.flaged) this.drawFlag();
     }
   }
@@ -366,7 +345,6 @@ modalRetryButton.addEventListener('click', () => {
   time = 0;
   map.length = 0;
   cells.length = 0;
-  cellsView.length = 0;
   bombs.length = 0;
   closeModal();
   link.href = './assets/img/character_0008.png';
