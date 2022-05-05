@@ -5,6 +5,8 @@ const modalLoss = document.querySelector('.modal_loss');
 const modalRetryButton = document.querySelector('.modal__retry-button');
 const flagBtn = document.querySelector('.flag');
 const link = document.querySelector("link[rel~='icon']");
+const timerMinutes = document.querySelector('#timer-minutes');
+const timerSeconds = document.querySelector('#timer-seconds');
 
 const ctx = canvas.getContext('2d');
 const cells = [];
@@ -13,87 +15,22 @@ const cellsView = [];
 const bombsView = [];
 const map = [];
 let activeBombImage;
+let intervalID;
+let isFirstClick = true;
+let time = 0;
 
 const cellSize = 40;
 const fieldSize = 10;
 const bombsCount = 15;
 
-canvas.width = fieldSize * cellSize * 2 + 40;
+// canvas.width = fieldSize * cellSize * 2 + 40;
+canvas.width = fieldSize * cellSize + 20;
 canvas.height = fieldSize * cellSize + 20;
 canvasLeft = canvas.offsetLeft;
 canvasTop = canvas.offsetTop;
 
-const cellStyle = {
-  0: () => { },
-  1: () => { ctx.fillStyle = '#fff' },
-  2: () => { ctx.fillStyle = 'green' },
-  3: () => { ctx.fillStyle = 'yellow' },
-  4: () => { ctx.fillStyle = 'orange' },
-  5: () => { ctx.fillStyle = 'red' },
-  6: () => { ctx.fillStyle = 'violet' },
-  bomb: (_this, bombImg) => {
-    ctx.drawImage(bombImg, _this.x + 3, _this.y + 3, _this.width - 6, _this.height - 6);
-    ctx.fillStyle = 'transparent';
-  },
-  default: () => { ctx.fillStyle = 'black' }
-}
-
 function getRandomInRange(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
-}
-
-class Cell {
-  constructor({ x, y, width, height, i, j, blockImg, bombImg, flagImg, opened = false, flaged = false }) {
-    this.x = x;
-    this.y = y;
-    this.width = width;
-    this.height = height;
-    this.mapI = i;
-    this.mapJ = j;
-    this.isBomb = !!map[this.mapI][this.mapJ];
-    this.flaged = flaged;
-    this.bombsAround = 0;
-    this.blockImg = blockImg;
-    this.bombImg = bombImg;
-    this.flagImg = flagImg;
-    this.opened = opened;
-  }
-
-  drawCell() {
-    ctx.fillStyle = '#6f3e43';
-    ctx.strokeStyle = '#bbabab';
-    ctx.fillRect(this.x, this.y, this.width, this.height);
-    ctx.strokeRect(this.x, this.y, this.width, this.height);
-
-    if (!this.isBomb) {
-      cellStyle[this.bombsAround]();
-    } else if (this.isBomb) {
-      cellStyle['bomb'](this, this.bombImg);
-    } else {
-      cellStyle['default']();
-    }
-
-    ctx.font = '30px Teletactile';
-    ctx.fillText(this.bombsAround, this.x + cellSize / 4.2, this.y + cellSize / 1.3);
-  }
-
-  drawBlock() {
-    ctx.drawImage(this.blockImg, this.x, this.y, this.width, this.height);
-  }
-
-  drawFlag() {
-    ctx.drawImage(this.flagImg, this.x + 10, this.y + 10, this.width - 20, this.height - 20);
-  }
-
-  draw() {
-    if (this.opened) {
-      this.drawCell();
-    } else {
-      this.drawBlock();
-
-      if (this.flaged) this.drawFlag();
-    }
-  }
 }
 
 function applyFunctionToCellsAround(cells, fn, cell) {
@@ -120,16 +57,16 @@ function openEmptyBlock(cell) {
   if (
     !cell ||
     cell.opened ||
-    cell.isBomb || 
+    cell.isBomb ||
     cell.bombsAround > 0 ||
     document.body.classList.contains('flaged')
   ) return;
- 
+
   if (cell.flaged) {
     cell.flaged = false;
     return;
   }
-  
+
   cell.opened = true;
   applyFunctionToCellsAround(cells, openEmptyBlock, cell);
   applyFunctionToCellsAround(cells, forceOpenBlock, cell);
@@ -160,6 +97,72 @@ function forceOpenBlock(cell) {
       });
     }
   }
+}
+
+function timer() {
+  const getNullAdd = (param) => {
+    if (param < 10) {
+      return '0' + param;
+    } else {
+      return param
+    }
+  }
+
+  const getTime = () => {
+    let minutes = getNullAdd(Math.floor((time / 60) % 60));
+    let seconds = getNullAdd(Math.floor(time % 60));
+    time += 1;
+    return { minutes, seconds }
+  }
+
+  const updateClock = () => {
+    let timeNow = getTime();
+    timerMinutes.textContent = timeNow.minutes;
+    timerSeconds.textContent = timeNow.seconds;
+  }
+
+  intervalID = setInterval(updateClock, 1000);
+  updateClock();
+}
+
+function cancelTimer() {
+  clearInterval(intervalID);
+}
+
+function openModal(modal) {
+  cancelTimer();
+  canvas.removeEventListener('click', canvasClickHandler);
+  modalWrapper.classList.add('visible');
+  modal.classList.add('visible');
+}
+
+function closeModal() {
+  modalWrapper.classList.remove('visible');
+  modalWrapper.querySelector('.visible').classList.remove('visible');
+}
+
+function canvasClickHandler(e) {
+  let x = e.pageX - canvasLeft;
+  let y = e.pageY - canvasTop;
+
+  if (isFirstClick) {
+    timer();
+  }
+  isFirstClick = false;
+
+  cells.forEach(cell => {
+    if (y > cell.y && y < cell.y + cell.height
+      && x > cell.x && x < cell.x + cell.width) {
+      openEmptyBlock(cell);
+      forceOpenBlock(cell);
+
+      draw();
+    }
+  });
+}
+
+function flagHandler() {
+  document.body.classList.toggle('flaged');
 }
 
 function draw() {
@@ -244,22 +247,22 @@ function start() {
         }
       }
 
-      for (let i = 0; i < fieldSize; i++) {
-        for (let j = 0; j < fieldSize; j++) {
-          cellsView.push(new Cell({
-            x: j * cellSize + canvas.width / 2 + 10,
-            y: i * cellSize + 10,
-            width: cellSize,
-            height: cellSize,
-            i,
-            j,
-            blockImg,
-            bombImg,
-            flagImg,
-            // opened: true
-          }));
-        }
-      }
+      // for (let i = 0; i < fieldSize; i++) {
+      //   for (let j = 0; j < fieldSize; j++) {
+      //     cellsView.push(new Cell({
+      //       x: j * cellSize + canvas.width / 2 + 10,
+      //       y: i * cellSize + 10,
+      //       width: cellSize,
+      //       height: cellSize,
+      //       i,
+      //       j,
+      //       blockImg,
+      //       bombImg,
+      //       flagImg,
+      //       opened: true
+      //     }));
+      //   }
+      // }
 
       cells.forEach(cell => {
         if (cell.isBomb) {
@@ -268,12 +271,12 @@ function start() {
         }
       });
 
-      cellsView.forEach(cell => {
-        if (cell.isBomb) {
-          bombsView.push(cell);
-          applyFunctionToCellsAround(cellsView, increaseBombsAround, cell);
-        }
-      });
+      // cellsView.forEach(cell => {
+      //   if (cell.isBomb) {
+      //     bombsView.push(cell);
+      //     applyFunctionToCellsAround(cellsView, increaseBombsAround, cell);
+      //   }
+      // });
 
       draw();
     });
@@ -281,42 +284,86 @@ function start() {
   canvas.addEventListener('click', canvasClickHandler);
 }
 
-function openModal(modal) {
-  canvas.removeEventListener('click', canvasClickHandler);
-  modalWrapper.classList.add('visible');
-  modal.classList.add('visible');
+const cellStyle = {
+  0: () => { },
+  1: () => { ctx.fillStyle = '#fff' },
+  2: () => { ctx.fillStyle = 'green' },
+  3: () => { ctx.fillStyle = 'yellow' },
+  4: () => { ctx.fillStyle = 'orange' },
+  5: () => { ctx.fillStyle = 'red' },
+  6: () => { ctx.fillStyle = 'violet' },
+  bomb: (_this, bombImg) => {
+    ctx.drawImage(bombImg, _this.x + 3, _this.y + 3, _this.width - 6, _this.height - 6);
+    ctx.fillStyle = 'transparent';
+  },
+  default: () => { ctx.fillStyle = 'black' }
 }
 
-function closeModal() {
-  modalWrapper.classList.remove('visible');
-  modalWrapper.querySelector('.visible').classList.remove('visible');
-}
+class Cell {
+  constructor({ x, y, width, height, i, j, blockImg, bombImg, flagImg, opened = false, flaged = false }) {
+    this.x = x;
+    this.y = y;
+    this.width = width;
+    this.height = height;
+    this.mapI = i;
+    this.mapJ = j;
+    this.isBomb = !!map[this.mapI][this.mapJ];
+    this.flaged = flaged;
+    this.bombsAround = 0;
+    this.blockImg = blockImg;
+    this.bombImg = bombImg;
+    this.flagImg = flagImg;
+    this.opened = opened;
+  }
 
-function canvasClickHandler(e) {
-  let x = e.pageX - canvasLeft;
-  let y = e.pageY - canvasTop;
+  drawCell() {
+    ctx.fillStyle = '#6f3e43';
+    ctx.strokeStyle = '#bbabab';
+    ctx.fillRect(this.x, this.y, this.width, this.height);
+    ctx.strokeRect(this.x, this.y, this.width, this.height);
 
-  cells.forEach(cell => {
-    if (y > cell.y && y < cell.y + cell.height
-      && x > cell.x && x < cell.x + cell.width) {
-      openEmptyBlock(cell);
-      forceOpenBlock(cell);
-
-      draw();
+    if (!this.isBomb) {
+      cellStyle[this.bombsAround]();
+    } else if (this.isBomb) {
+      cellStyle['bomb'](this, this.bombImg);
+    } else {
+      cellStyle['default']();
     }
-  });
-}
-start();
 
-function flagHandler() {
-  document.body.classList.toggle('flaged');
+    ctx.font = '30px Teletactile';
+    ctx.fillText(this.bombsAround, this.x + cellSize / 4.2, this.y + cellSize / 1.3);
+  }
+
+  drawBlock() {
+    ctx.drawImage(this.blockImg, this.x, this.y, this.width, this.height);
+  }
+
+  drawFlag() {
+    ctx.drawImage(this.flagImg, this.x + 10, this.y + 10, this.width - 20, this.height - 20);
+  }
+
+  draw() {
+    if (this.opened) {
+      this.drawCell();
+    } else {
+      this.drawBlock();
+
+      if (this.flaged) this.drawFlag();
+    }
+  }
 }
+
+start();
 
 flagBtn.addEventListener('click', flagHandler);
 document.addEventListener('contextmenu', (e) => e.preventDefault())
 document.addEventListener('mousedown', (e) => { if (e.button === 2) flagHandler() });
 
 modalRetryButton.addEventListener('click', () => {
+  isFirstClick = true;
+  timerMinutes.textContent = '00';
+  timerSeconds.textContent = '00';
+  time = 0;
   map.length = 0;
   cells.length = 0;
   cellsView.length = 0;

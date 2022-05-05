@@ -97,14 +97,32 @@ body.flaged {
 }
 
 .canvas__header {
-  padding: 10px 0;
+  padding: 10px 20px;
   display: flex;
-  justify-content: center;
+  justify-content: space-between;
   align-items: center;
   background-color: greenyellow;  
   background-position: center;
   background-image: url('./assets/img/blend2.jpg');
   background-blend-mode: multiply;
+}
+
+.canvas__title {
+  font-family: 'Pixel';
+  font-size: 26px;
+  color: #fff;
+  text-transform: uppercase;
+}
+
+.timer {
+  padding: 10px;
+  border: 2px solid #fff;
+  background-color: #000;
+  border-radius: 8px;
+  color: #fff;
+  font-weight: bold;
+  display: flex;
+  font-size: 20px;
 }
 
 .flag {
@@ -114,12 +132,14 @@ body.flaged {
   border: 2px solid #fff;
   background-color: green;
   border-radius: 8px;
-  padding: 10px;
+  padding: 5px;
   transition: transform .2s;
   cursor: pointer;
 }
 
 .flag img {
+  width: 28px;
+  height: 28px;
   user-select: none;
   pointer-events: none;
 }
